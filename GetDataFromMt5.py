@@ -1,6 +1,9 @@
 import MetaTrader5 as mt5
 from datetime import datetime
 import pandas as pd
+import time
+import schedule
+import pytz
 
 def connect(account):
     account = int(account)
@@ -111,8 +114,33 @@ def close_positions_by_symbol(symbol):
     open_positions = positions_get(symbol)
     open_positions["ticket"].apply(lambda x: close_position(x))
 
-connect(41464506)
-open_position("EURUSD", "BUY", 1, 300, 100)
-res = positions_get()
-print(res)
-close_positions_by_symbol("EURUSD")
+def live_trading():
+    schedule.every().hour.at(":00").do(run_trader, mt5.TIMEFRAME_M15)
+    schedule.every().hour.at(":15").do(run_trader, mt5.TIMEFRAME_M15)
+    schedule.every().hour.at(":30").do(run_trader, mt5.TIMEFRAME_M15)
+    schedule.every().hour.at(":45").do(run_trader, mt5.TIMEFRAME_M15)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+def run_trader(time_frame):
+    connect(41464506)
+    pair_data = get_data(time_frame)
+
+
+def get_data(time_frame):
+    pairs = ["EURUSD", "USBCAD"]
+    pair_data = dict()
+    for pair in pairs:
+        utc_from = datetime(2021, 1, 1)
+        date_to = datetime.now().astimezone(pytz.timezone("Europe/Athens"))
+        date_to = datetime(date_to.year, date_to.month, date_to.day, hour=date_to.hour, minute=date_to.minute)
+        rates = mt5.copy_rates_range(pair, time_frame, utc_from, date_to)
+        rates_frame = pd.DataFrame(rates)
+        rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
+        rates_frame.drop(rates_frame.tail(1).index, inplace = True)
+        pair_data[pair] = rates_frame
+    return pair_data
+
+if __name__ == "__main__":
+    live_trading()
