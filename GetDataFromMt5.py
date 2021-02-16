@@ -4,6 +4,8 @@ import pandas as pd
 import time
 import schedule
 import pytz
+import talib as ta
+import numpy as np
 
 def connect(account):
     account = int(account)
@@ -124,23 +126,37 @@ def live_trading():
         time.sleep(1)
 
 def run_trader(time_frame):
+    print(f"Running trader at {datetime.now()}")
     connect(41464506)
     pair_data = get_data(time_frame)
+    #check_trades(time_frame, pair_data)
 
 
 def get_data(time_frame):
     pairs = ["EURUSD", "USBCAD"]
     pair_data = dict()
     for pair in pairs:
-        utc_from = datetime(2021, 1, 1)
+        utc_from = datetime(2021, 1, 1, tzinfo=pytz.timezone('Europe/Athens'))
         date_to = datetime.now().astimezone(pytz.timezone("Europe/Athens"))
         date_to = datetime(date_to.year, date_to.month, date_to.day, hour=date_to.hour, minute=date_to.minute)
         rates = mt5.copy_rates_range(pair, time_frame, utc_from, date_to)
-        rates_frame = pd.DataFrame(rates)
+        rates_frame = pd.DataFrame(rates, columns = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume'])
         rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
         rates_frame.drop(rates_frame.tail(1).index, inplace = True)
         pair_data[pair] = rates_frame
+        #print(pair_data[pair])
     return pair_data
 
+def check_trades(time_frame, pair_data):
+    for pair, data in pair_data.items():
+        data["SMA"] = ta.SMA(data["close"], 10)
+        data["EMA"] = ta.EMA(data["close"], 50)
+        last_row = data.tail(1)
+        for index, last in last_row.iterrows():
+            if(last["close"] > last["EMA"] and last["close"] < last["SMA"]):
+                open_position(pair, "BUY", 1, 300, 100)
+
+
 if __name__ == "__main__":
-    live_trading()
+    #live_trading()
+    run_trader(mt5.TIMEFRAME_M15)
