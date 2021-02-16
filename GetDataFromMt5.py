@@ -129,11 +129,11 @@ def run_trader(time_frame):
     print(f"Running trader at {datetime.now()}")
     connect(41464506)
     pair_data = get_data(time_frame)
-    #check_trades(time_frame, pair_data)
+    check_trades(time_frame, pair_data)
 
 
 def get_data(time_frame):
-    pairs = ["EURUSD", "USBCAD"]
+    pairs = ["EURUSD", "USDCAD"]
     pair_data = dict()
     for pair in pairs:
         utc_from = datetime(2021, 1, 1, tzinfo=pytz.timezone('Europe/Athens'))
@@ -144,7 +144,7 @@ def get_data(time_frame):
         rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
         rates_frame.drop(rates_frame.tail(1).index, inplace = True)
         pair_data[pair] = rates_frame
-        #print(pair_data[pair])
+        print(pair_data[pair])
     return pair_data
 
 def check_trades(time_frame, pair_data):
